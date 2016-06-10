@@ -9,22 +9,32 @@ The LWJGL (Lightweight Java Game Library, https://www.lwjgl.org/) version is 3, 
 
 Some of the features of the engine are:
 
+
 -OBJ format support, although MTL is not yet supported which means textures are to be supplied in a separate single png file
+
 -Types of lighting:
   - Directional light - sumilates sunlight, with dawns and dusks giving a slight red glow
   - Point light
   - Spot light
   - Ambient light
+
 -Sky box support
+
 -Terrain generation through heightmaps(png format)
+
 -Terrain collision detection
+
 -Mesh bounding box generation
+
 -Mouse picker:
   -able to select 3D objects in world space through ray casting
    -every model has it's own ID and can be accessed at all times
   -able to get the screen cursor position onto the terrain
+  
 -Dynamic scene composition, i.e. different models(some with lights) can be added by the user at all times
+
 -Smooth model moving from position A to position B
+
 -HUD
   -Text rendered onto the screen, cyrillic and latin scripts are supported, prints selected object ID
   -Standard HUD
