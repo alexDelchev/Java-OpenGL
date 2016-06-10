@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src">
+		<attributes>
+			<attribute name="org.eclipse.jdt.launching.CLASSPATH_ATTR_LIBRARY_PATH_ENTRY" value="LWJGL Test Project/native"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>
+	<classpathentry kind="lib" path="jar/lwjgl.jar" sourcepath="lwjgl source/src.zip">
+		<attributes>
+			<attribute name="javadoc_location" value="file:/C:/Users/Alex/Desktop/Model/LWJGL%203.0b/doc/"/>
+			<attribute name="org.eclipse.jdt.launching.CLASSPATH_ATTR_LIBRARY_PATH_ENTRY" value="LWJGL Test Project/native"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="jar/joml.jar" sourcepath="joml source/src.zip"/>
+	<classpathentry kind="lib" path="jar/PNGDecoder.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>
