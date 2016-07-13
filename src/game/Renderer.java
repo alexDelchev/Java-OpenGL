@@ -2,6 +2,7 @@ package game;
 
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL13.GL_TEXTURE0;
+import static org.lwjgl.opengl.GL13.GL_TEXTURE1;
 import static org.lwjgl.opengl.GL13.glActiveTexture;
 import static org.lwjgl.opengl.GL20.*;
 import static org.lwjgl.opengl.GL30.*;
@@ -17,6 +18,7 @@ import engine.core.graph.PointLight;
 import engine.core.graph.Scene;
 import engine.core.graph.SceneLight;
 import engine.core.graph.ShaderProgram;
+import engine.core.graph.ShadowMap;
 import engine.core.graph.SkyBox;
 import engine.core.graph.SpotLight;
 import engine.core.graph.SunLight;
@@ -31,11 +33,11 @@ import org.joml.Vector4f;
 
 public class Renderer {
 	
-	private static final float FOV = (float) Math.toRadians(60.f);
+	public static final float FOV = (float) Math.toRadians(60.f);
 	
-	private static final float Z_NEAR = 0.01f;
+	public static final float Z_NEAR = 0.01f;
 	
-	private static final float Z_FAR = 1000.f;
+	public static final float Z_FAR = 1000.f;
 	
 	private static final int MAX_POINT_LIGHTS = 15;
 	
@@ -47,8 +49,14 @@ public class Renderer {
 	private Transformation transformation;
 	
 	private ShaderProgram shaderProgram;
+	private ShaderProgram depthShaderProgram;
 	private ShaderProgram hudShaderProgram;
 	private ShaderProgram skyBoxShaderProgram;
+	private ShaderProgram depthMapShader;
+	private ShaderProgram GUITextureShader;
+
+	
+	private ShadowMap shadowMap;
 
 	public Renderer(){
 		
@@ -60,11 +68,38 @@ public class Renderer {
 		return transformation;
 	}
 	
-	public void init(Display display) throws Exception{
+	public void init(Display display, Camera camera) throws Exception{
+		
+		shadowMap = new ShadowMap();
 		
 		setupSceneShader();
 		setupSkyBoxShader();
 		setupHudShader();
+		setupDepthMapShader();
+		setupGUITextureShader();
+	}
+	
+	private void setupGUITextureShader() throws Exception{
+		GUITextureShader = new ShaderProgram();
+		
+		GUITextureShader.createVertexShader(Utils.loadResource("/shaders/GUITexture_vertex.vs"));
+		GUITextureShader.createFragmentShader(Utils.loadResource("/shaders/GUITexture_fragment.fs"));
+		GUITextureShader.link();
+		
+		GUITextureShader.createUniform("projModelMatrix");
+		
+	}
+	
+	private void setupDepthMapShader() throws Exception{
+		
+		depthMapShader = new ShaderProgram();
+		
+		depthMapShader.createVertexShader(Utils.loadResource("/shaders/depthmap_vertex.vs"));
+		depthMapShader.createFragmentShader(Utils.loadResource("/shaders/depthmap_fragment.fs"));
+		depthMapShader.link();
+		
+		depthMapShader.createUniform("lightSpaceMatrix");
+		depthMapShader.createUniform("model");
 	}
 	
 	private void setupSkyBoxShader() throws Exception{
@@ -90,7 +125,8 @@ public class Renderer {
 		shaderProgram.link();
 	    
 		shaderProgram.createUniform("projectionMatrix");
-		shaderProgram.createUniform("modelViewMatrix");
+		shaderProgram.createUniform("viewMatrix");
+		shaderProgram.createUniform("modelMatrix");
 		shaderProgram.createUniform("texture_sampler");
 		
 		shaderProgram.createMaterialUniform("material");
@@ -101,6 +137,12 @@ public class Renderer {
 		shaderProgram.createPointLightListUniform("pointLights", MAX_POINT_LIGHTS);
 		shaderProgram.createSunLightUniform("sunLight");
 		shaderProgram.createSpotLightListUniform("spotLights", MAX_SPOT_LIGHTS);
+		
+		shaderProgram.createFogUniform("fog");
+		
+
+		shaderProgram.createUniform("lightSpaceMatrix");
+		shaderProgram.createUniform("shadowMap");
 	}
 	
 	public void setupHudShader() throws Exception{
@@ -123,14 +165,80 @@ public class Renderer {
 	public void render(Display display, Camera camera, Scene scene, IHud hud){
 		clear();
 		
-		if(display.isResized()){
-			glViewport(0, 0, display.getWidth(), display.getHeight());
-			display.setResized(false);
-		}
+		renderDepthMap(display, camera, scene);
+		
+		glViewport(0, 0, display.getWidth(), display.getHeight());
 		
 		renderScene(display, camera, scene);
 		renderSkyBox(display, camera, scene);
 		renderHud(display, hud);
+		//renderGUITextures(display, camera, scene, hud);
+	}
+	
+	public void renderGUITextures(Display display, Camera camera, Scene scene, IHud hud){
+		GUITextureShader.bind();
+		
+		Matrix4f ortho = transformation.getOrtho2DProjectionMatrix(0, display.getWidth(), display.getHeight(), 0);
+		
+		for(GameItem gameItem: hud.getGUITextures()){
+			Mesh mesh = gameItem.getMesh();
+			
+			Matrix4f projModelMatrix = transformation.buildOrthoProjectionModelMatrix(gameItem, ortho);
+			GUITextureShader.setUniform("projModelMatrix", projModelMatrix);
+		
+			mesh.render();
+		}
+		GUITextureShader.unbind();
+	}
+	
+	public void renderDepthMap(Display display, Camera camera, Scene scene){
+		
+		depthMapShader.bind();
+		
+		glBindFramebuffer(GL_FRAMEBUFFER, shadowMap.getDepthMapFBO());
+		glViewport(0,0, ShadowMap.SHADOW_MAP_WIDTH, ShadowMap.SHADOW_MAP_HEIGHT);
+		glClear(GL_DEPTH_BUFFER_BIT);
+		
+		Matrix4f lightProjection = new Matrix4f();
+		Vector3f campos = new Vector3f(camera.getPosition());
+		lightProjection.identity().ortho(-10f, 10f, -10f, 10f, -10f, 20f);
+		
+		Vector3f lightDir = new Vector3f(scene.getSceneLight().getSunLight().getDirection());
+
+		if(lightDir.x > 0.83f){
+			lightDir.x = 0.8300f;
+		}else if(lightDir.x < -0.8300f){
+			lightDir.x = -0.8300f;
+		}
+		
+		if(lightDir.y < 0.21f){
+			lightDir.y = 0.21f;
+		}
+		Matrix4f lightView = new Matrix4f();
+		lightView.identity().lookAt(new Vector3f(campos.x + lightDir.x, campos.y + lightDir.y, campos.z + lightDir.z), new Vector3f(campos), new Vector3f(0.0f, 1.0f, 0.0f));		
+		
+		Matrix4f lightSpaceMatrix = new Matrix4f();
+		
+		lightProjection.mul(lightView, lightSpaceMatrix);
+		depthMapShader.setUniform("lightSpaceMatrix", lightSpaceMatrix);
+		transformation.setLightSpaceMatrix(lightSpaceMatrix);
+		
+		for(GameItem item: scene.getTerrain()){
+			Matrix4f model = transformation.buildModelWorldMatrix(item);
+			depthMapShader.setUniform("model", model);
+			item.getMesh().render();
+		}
+		
+		Map<Mesh, List<GameItem>> mapMeshes = scene.getMeshMap();
+		for(Mesh mesh: mapMeshes.keySet()){
+			mesh.renderList(mapMeshes.get(mesh), (GameItem item) -> {
+				Matrix4f model = transformation.buildModelWorldMatrix(item);
+				depthMapShader.setUniform("model", model);
+			});
+		}
+		
+		depthMapShader.unbind();
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 	
 	public void renderScene(Display display, Camera camera, Scene scene){
@@ -139,23 +247,32 @@ public class Renderer {
 		
 		Matrix4f projectionMatrix = transformation.updateProjectionMatrix(FOV, display.getWidth(), display.getHeight(), Z_NEAR, Z_FAR);
 		shaderProgram.setUniform("projectionMatrix", projectionMatrix);
+
+		shaderProgram.setUniform("fog", scene.getFog());
+
 		
 		Matrix4f viewMatrix = transformation.updateViewMatrix(camera);
+		shaderProgram.setUniform("viewMatrix", viewMatrix);
 
-		shaderProgram.setUniform("camera_pos", camera.getPosition());
 		
 		SceneLight sceneLight = scene.getSceneLight();
 		renderLights(viewMatrix, sceneLight);
 		
 		shaderProgram.setUniform("texture_sampler", 0);
+		shaderProgram.setUniform("shadowMap", 1);
+		shaderProgram.setUniform("lightSpaceMatrix", transformation.getLightSpaceMatrix());
+		
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, shadowMap.getDepthMapTexture().getID());
 		
 		for(GameItem item: scene.getTerrain()){
+			
 			Mesh mesh = item.getMesh();
-			shaderProgram.setUniform("material", mesh.getMaterial());
+			shaderProgram.setUniform("material", item.getMaterial());
 			
-			Matrix4f modelViewMatrix = transformation.buildModelViewMatrix(item, viewMatrix);
-			shaderProgram.setUniform("modelViewMatrix", modelViewMatrix);
-			
+			Matrix4f modelMatrix = transformation.buildModelWorldMatrix(item);
+			shaderProgram.setUniform("modelMatrix", modelMatrix);
+		
 			mesh.render();
 		}
 		
@@ -171,20 +288,11 @@ public class Renderer {
 					glBindTexture(GL_TEXTURE_2D, texture.getID());
 				}
 				
-				Matrix4f modelViewMatrix = transformation.buildModelViewMatrix(gameItem, viewMatrix);
-				
 				shaderProgram.setUniform("material", gameItem.getMaterial());
-				shaderProgram.setUniform("modelViewMatrix", modelViewMatrix);
+				Matrix4f modelMatrix = transformation.buildModelWorldMatrix(gameItem);
+				shaderProgram.setUniform("modelMatrix", modelMatrix);
 			});
 		}
-		
-		/*for(GameItem item: scene.getGameItems()){
-			Mesh mesh = item.getMesh();
-			shaderProgram.setUniform("material", mesh.getMaterial());
-			Matrix4f modelViewMatrix = transformation.buildModelViewMatrix(item, viewMatrix);
-			shaderProgram.setUniform("modelViewMatrix", modelViewMatrix);
-			mesh.render();
-		}*/
 		
 		shaderProgram.unbind();
 	}
@@ -264,7 +372,7 @@ public class Renderer {
 		
 		hudShaderProgram.bind();
 		
-		Matrix4f ortho = transformation.getOrthoProjectionMatrix(0, display.getWidth(), display.getHeight(), 0);
+		Matrix4f ortho = transformation.getOrtho2DProjectionMatrix(0, display.getWidth(), display.getHeight(), 0);
 		for(GameItem gameItem: hud.getGameItems()){
 			Mesh mesh = gameItem.getMesh();
 			
@@ -292,9 +400,21 @@ public class Renderer {
 		hudShaderProgram.unbind();
 	}
 	
+	public ShadowMap getShadowMap(){
+		return shadowMap;
+	}
+	
 	public void cleanup(){
 		if(shaderProgram != null){
 			shaderProgram.cleanup();
+		}
+		
+		if(hudShaderProgram != null){
+			hudShaderProgram.cleanup();
+		}
+		
+		if(skyBoxShaderProgram != null){
+			skyBoxShaderProgram.cleanup();
 		}
 	}
 }

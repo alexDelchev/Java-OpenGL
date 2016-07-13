@@ -2,8 +2,9 @@ package engine.core.graph;
 
 import engine.core.graph.Material;
 import engine.core.graph.Mesh;
-import engine.core.graph.OBJReader;
 import engine.core.graph.Texture;
+import engine.loaders.OBJLoader;
+import engine.loaders.OBJReader;
 import engine.core.GameItem;
 
 public class SkyBox extends GameItem{

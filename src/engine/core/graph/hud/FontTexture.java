@@ -108,7 +108,6 @@ public class FontTexture{
 		try(ByteArrayOutputStream out = new ByteArrayOutputStream()){
 			
 			ImageIO.write(img, IMAGE_FORMAT, out);
-			ImageIO.write(img, IMAGE_FORMAT, new java.io.File("D://Temp.png"));
 			out.flush();
 			is = new ByteArrayInputStream(out.toByteArray());
 		}

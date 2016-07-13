@@ -12,7 +12,7 @@ import org.joml.Vector3f;
 import org.lwjgl.BufferUtils;
 
 import engine.core.GameItem;
-import engine.core.graph.OBJReader.Vertex;
+import engine.loaders.OBJReader.Vertex;
 
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL13.*;

@@ -16,10 +16,9 @@ import engine.core.Display;
 import engine.core.MouseInput;
 import engine.core.MousePicker;
 import engine.core.graph.Camera;
+import engine.core.graph.Fog;
 import engine.core.graph.Material;
 import engine.core.graph.Mesh;
-import engine.core.graph.OBJLoader;
-import engine.core.graph.OBJReader;
 import engine.core.graph.PointLight;
 import engine.core.graph.SceneLight;
 import engine.core.graph.SkyBox;
@@ -29,6 +28,8 @@ import engine.core.graph.Terrain;
 import engine.core.graph.Texture;
 import engine.core.graph.Scene;
 import engine.core.graph.hud.StandardHud;
+import engine.loaders.OBJLoader;
+import engine.loaders.OBJReader;
 import engine.core.GameItem;
 
 
@@ -56,11 +57,19 @@ public class SimpleGame implements IGameLogic{
 	
 	private float sunSpeed = 1.0f;
 	
+	private float angleInc = -0.05f;
+	
 	private boolean sunIsActive = true;
+	
+	private boolean sunLeftToRight = true;
+	
+	private boolean sunToUp = true;
 	
 	private boolean placingItem = false;
 	
 	private boolean dragging = false;
+	
+	private boolean sunToNorth = true;
 	
 	private Terrain terrain;
 	
@@ -82,7 +91,7 @@ public class SimpleGame implements IGameLogic{
 		
 		mousePicker = new MousePicker();
 		
-		lightAngle = -90;
+		lightAngle = 0;
 		
 		selectedItemIndex = -1;
 		
@@ -93,21 +102,22 @@ public class SimpleGame implements IGameLogic{
 	
 	@Override
 	public void init(Display display) throws Exception{
-		renderer.init(display);
+		renderer.init(display, camera);
 		
 		scene = new Scene();
 		SceneLight sceneLight = new SceneLight();
 		scene.setSceneLight(sceneLight);
 		
-		float reflectance = 1f;
+		scene.setFog(new Fog(true, new Vector3f(0.3f, 0.3f, 0.3f), 0.003f));
 		
 		hud = new Hud("Кирилица, Latin, Set on 4/12/2016, 21:36 EET");
 		hud.createStandardHud(display);
+		hud.createGUITexture(display, renderer.getShadowMap().getDepthMapTexture().getID());
 		
 		float terrainScale = 500f;
 		int terrainSize = 1;
-		float minY = 0.01f;
-		float maxY = 0.15f;
+		float minY = 0.15f;
+		float maxY = 0.30f;
 		int increase = 75;
 		
         terrain = new Terrain(terrainSize, terrainScale, minY, maxY,
@@ -144,28 +154,66 @@ public class SimpleGame implements IGameLogic{
 		
 		camera.getPosition().y = terrain.getLowestLevel()[1] + 5f;
 		camera.getPosition().z = 10f;
+		
+		Mesh mesh = modelMap.get("tower");
+		mesh.setMaterial(new Material());
+		
+		/*GameItem item = new GameItem(mesh);
+		item.setMaterial(new Material(textureMap.get("tower"), 1f));
+		Vector3f position = new Vector3f(0, terrain.getLowestLevel()[1], 0);
+		item.setPosition(position.x, position.y, position.z);
+		item.setScale(0.15f);
+		item.setRotation(0, -20, 0);
+		
+		scene.addGameItem(item);*/
 	}
 	
 	public void setupLights(){
 		
 		SceneLight sceneLight = scene.getSceneLight();
 		
+		//sceneLight.setAmbientLight(new Vector3f(0.3f, 0.3f, 0.3f));
+		//sceneLight.setAmbientLight(new Vector3f(97f/255f, 0f, 225f/255f));
+		//sceneLight.setAmbientLight(new Vector3f((1f/3f)/3f, 0f, 0.3f).mul(2));
 		sceneLight.setAmbientLight(new Vector3f(0.3f, 0.3f, 0.3f));
 		
-		float lightIntensity = 10f;
-		Vector3f lightPosition = new Vector3f(-1,0,0);
-		sceneLight.setSunLight(new SunLight(new Vector3f(1,1,1), lightPosition, lightIntensity));
+		float lightIntensity = 0f;
+		Vector3f lightPosition = new Vector3f(1f,0f,0.3f);
+		sceneLight.setSunLight(new SunLight(new Vector3f(1f/3f,0f,1f), lightPosition, lightIntensity));
+
+	    
+		Vector3f startPos = new Vector3f(-1f, 0f, 0f);
+		Vector3f endPos = new Vector3f(0f, 1f, 0f);
 		
-//		lightPosition = new Vector3f(0.0f, 0.0f, 10f);
-//		float spotLightIntensity = 0.0f;
-//		PointLight spotPointLight = new PointLight(new Vector3f(1,1,1), lightPosition, spotLightIntensity);
-//		PointLight.Attenuation spotAtt = new PointLight.Attenuation(0.0f, 0.0f, 0.02f);
-//		spotPointLight.setAttenuation(spotAtt);
-//		Vector3f coneDir = new Vector3f(0,0,-1);
-//		float cutOff = (float) Math.cos(Math.toRadians(140));
-//		SpotLight spotLight = new SpotLight(spotPointLight, coneDir, cutOff);
-//		spotLightList = new SpotLight[]{spotLight};
-//		sceneLight.setSpotLights(spotLightList);
+		Vector3f temp = new Vector3f();
+		endPos.sub(startPos, temp);
+		
+		float factor = 1f/(temp.length()*180);
+		
+		Vector3f step = new Vector3f();
+		
+		startPos.lerp(endPos, factor, step);
+		step.sub(startPos);
+		
+		float stepp = 1f/3600f;
+		sceneLight.getSunLight().setStep(stepp);
+		
+		
+		
+		//
+	    //SpotLight setup
+		//
+		
+		/*lightPosition = new Vector3f(0.0f, 0.0f, 10f);
+		float spotLightIntensity = 0.0f;
+		PointLight spotPointLight = new PointLight(new Vector3f(1,1,1), lightPosition, spotLightIntensity);
+		PointLight.Attenuation spotAtt = new PointLight.Attenuation(0.0f, 0.0f, 0.02f);
+		spotPointLight.setAttenuation(spotAtt);
+    	Vector3f coneDir = new Vector3f(0,0,-1);
+		float cutOff = (float) Math.cos(Math.toRadians(140));
+		SpotLight spotLight = new SpotLight(spotPointLight, coneDir, cutOff);
+		spotLightList = new SpotLight[]{spotLight};
+		sceneLight.setSpotLights(spotLightList);*/
 	}
 	
 	@Override
@@ -190,14 +238,6 @@ public class SimpleGame implements IGameLogic{
 		}else if(display.isKeyPressed(GLFW_KEY_X)){
 			cameraInc.y = 5f;
 		}
-		
-//		PointLight[] pointLights = sceneLight.getPointLights();
-//		float lightPos = pointLights[0].getPosition().z;
-//		if(display.isKeyPressed(GLFW_KEY_N)){
-//			pointLights[0].getPosition().z = lightPos + 0.1f;
-//		}else if(display.isKeyPressed(GLFW_KEY_M)){
-//			pointLights[0].getPosition().z = lightPos + 0.1f;
-//		}
 	}
 	
 	@Override
@@ -416,36 +456,80 @@ public class SimpleGame implements IGameLogic{
 	
 	public void updateLight(){
 		
-		SceneLight sceneLight = scene.getSceneLight();
-		
-		SunLight sunLight = sceneLight.getSunLight();
-		
 		if(sunIsActive){
-		    lightAngle += 0.05f*sunSpeed;
-		}
-		
-		if(lightAngle>90){
 			
-			sunLight.setIntensity(0);
-			if(lightAngle >= 120){
-				lightAngle = -90;
+			Vector3f dir = scene.getSceneLight().getSunLight().getDirection();
+			float step = scene.getSceneLight().getSunLight().getStep();
+			
+			if(sunLeftToRight){
+				step = step * 5;
 			}
-		}else if(lightAngle <= -80 || lightAngle >= 80){
 			
-			float factor = 1 - (float) (Math.abs(lightAngle) - 80) / 10.0f;
-			sunLight.setIntensity(factor);
-			sunLight.getColor().y = Math.max(factor, 0.9f);
-			sunLight.getColor().z = Math.max(factor, 0.5f);
-		}else{
-			sunLight.setIntensity(1);
-			sunLight.getColor().x = 1;
-			sunLight.getColor().y = 1;
-			sunLight.getColor().z = 1;
+			if(sunLeftToRight){
+				dir.x += step*sunSpeed;
+			}else{
+				dir.x -= step*sunSpeed;
+			}
+			
+			if(sunToUp){
+				dir.y += step*sunSpeed;
+			}else{
+				dir.y -= step*sunSpeed;
+			}
+			
+			if(dir.x > 0.999f){
+				sunLeftToRight = false;
+				scene.getSceneLight().getSunLight().setIntensity(0f);
+				
+				float sunZOffset = 0.3f/60f;
+				Vector3f lightDir = scene.getSceneLight().getSunLight().getDirection();
+				
+				if(sunToNorth){
+					lightDir.z -= sunZOffset;
+				}else{
+					lightDir.z += sunZOffset;
+				}
+				
+				if(lightDir.z <= 0.3f - (0.3f/60)*59){
+					sunToNorth = false;
+				}else if(lightDir.z >= 0.299){
+					sunToNorth = true;
+				}
+				
+			}else if(dir.x < -0.999f){
+				sunLeftToRight = true;
+			}
+			
+			if(dir.y > 0.999f){
+				sunToUp = false;
+			}else if(dir.y < 0.001){
+				sunToUp = true;
+			}
+			
+			float intensity = scene.getSceneLight().getSunLight().getIntensity();
+			Vector3f color = scene.getSceneLight().getSunLight().getColor();
+			//Vector3f ambientColor = scene.getSceneLight().getAmbientLight();
+			
+			if(!sunLeftToRight && sunToUp){
+				scene.getSceneLight().getSunLight().setIntensity(intensity + (step * sunSpeed));
+				
+				color.x += ((step*2)/3)*sunSpeed;
+				color.y += step*sunSpeed;
+				
+				//ambientColor.x += ((((step*2)/3)*sunSpeed)/3)*2;
+				//ambientColor.y += ((step*sunSpeed)/3)*2;
+			}else if(!sunLeftToRight && !sunToUp){
+				scene.getSceneLight().getSunLight().setIntensity(intensity - (step * sunSpeed));
+				
+				color.x -= ((step*2)/3)*sunSpeed;
+				color.y -= step*sunSpeed;
+				
+				//ambientColor.x -= ((((step*2)/3)*sunSpeed)/3)*2;
+				//ambientColor.y -= ((step*sunSpeed)/3)*2;
+			}
+			
 		}
 		
-		double angRad = Math.toRadians(lightAngle);
-		sunLight.getDirection().x = (float) Math.sin(angRad);
-		sunLight.getDirection().y = (float) Math.cos(angRad); 
 	}
 	
 	@Override

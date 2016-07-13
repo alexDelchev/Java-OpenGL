@@ -9,8 +9,11 @@ import org.joml.Vector3f;
 
 import engine.core.GameItem;
 import engine.core.IHud;
+import engine.core.Utils;
 import engine.core.Display;
-
+import engine.core.graph.Material;
+import engine.core.graph.Mesh;
+import engine.core.graph.Texture;
 import engine.core.graph.hud.FontTexture;
 import engine.core.graph.hud.StandardHud;
 import engine.core.graph.hud.TextItem;
@@ -24,6 +27,8 @@ public class Hud implements IHud{
 	private List<GameItem> gameItems = new ArrayList<GameItem>();
 	
 	private List<GameItem> tempItems = new ArrayList<GameItem>();
+	
+	private List<GameItem> GUITextures = new ArrayList<GameItem>();
 	
 	private final TextItem statusTextItem;
 	
@@ -95,5 +100,56 @@ public class Hud implements IHud{
 		for(int i=0; i<fonts.length; i++){
 			System.out.println(fonts[i]);
 		}
+	}
+	
+	public void createGUITexture(Display display, int textureID){
+	
+		List<Float> positions = new ArrayList();
+		List<Float> textCoords = new ArrayList();
+		float[] normals = new float[0];
+		List<Integer> indices = new ArrayList();
+		
+        positions.add((float) display.getWidth()/2); // x
+        positions.add(0f); //y
+        positions.add(0f); //z
+        textCoords.add(0f);
+        textCoords.add(0.0f);
+        indices.add(0);
+        
+        positions.add((float) display.getWidth()/2); // x
+        positions.add((float)display.getHeight()/2); //y
+        positions.add(0f); //z
+        textCoords.add(0f);
+        textCoords.add(1f);
+        indices.add(1);
+        
+        positions.add((float) display.getWidth()); // x
+        positions.add((float) display.getHeight()/2); //y
+        positions.add(0f); //z
+        textCoords.add(1f);
+        textCoords.add(1f);
+        indices.add(2);
+        
+        positions.add((float)display.getWidth()); // x
+        positions.add(0f); //y
+        positions.add(0f); //z
+        textCoords.add(1f);
+        textCoords.add(0.0f);
+        indices.add(3);
+        
+        indices.add(0);
+        indices.add(2);
+        
+		float[] posArr = Utils.floatListToArray(positions);
+		float[] textCoordsArr = Utils.floatListToArray(textCoords);
+		int[] indicesArr = Utils.intListToArray(indices);
+		Mesh mesh = new Mesh(posArr, textCoordsArr, normals, indicesArr);
+		mesh.setMaterial(new Material(new Texture(textureID)));
+
+		GUITextures.add(new GameItem(mesh));
+	}
+	
+	public List<GameItem> getGUITextures(){
+		return GUITextures;
 	}
 }

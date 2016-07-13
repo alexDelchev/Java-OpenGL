@@ -21,12 +21,15 @@ public class Scene {
 	
 	private SceneLight sceneLight;
 	
+	private Fog fog;
+	
 	public Scene(){
 		meshMap = new HashMap();
 		sceneLight = new SceneLight();
 		gameItems = new ArrayList<GameItem>();
 		terrain = new ArrayList<GameItem>();
 		itemMap = new HashMap<>();
+		fog = Fog.NO_FOG;
 	}
 	
 	public List<GameItem> getGameItems(){
@@ -94,5 +97,13 @@ public class Scene {
 	
 	public void setSceneLight(SceneLight sceneLight){
 		this.sceneLight = sceneLight;
+	}
+	
+	public void setFog(Fog fog){
+		this.fog = fog;
+	}
+	
+	public Fog getFog(){
+		return fog;
 	}
 }

@@ -83,6 +83,12 @@ public class ShaderProgram {
 		}
 	}
 	
+	public void createFogUniform(String uniformName) throws Exception{
+		createUniform(uniformName + ".active");
+		createUniform(uniformName + ".color");
+		createUniform(uniformName + ".density");
+	}
+	
 	public void setUniform(String uniformName, Matrix4f value){
 		
         FloatBuffer fb = BufferUtils.createFloatBuffer(16);
@@ -154,6 +160,12 @@ public class ShaderProgram {
 	
 	public void setUniform(String uniformName, SpotLight spotLight, int pos){
 		setUniform(uniformName + "[" + pos + "]", spotLight);
+	}
+	
+	public void setUniform(String uniformName, Fog fog){
+		setUniform(uniformName + ".active", fog.isActive() ? 1 : 0);
+		setUniform(uniformName + ".color", fog.getColor());
+		setUniform(uniformName + ".density", fog.getDensity());
 	}
 	
 	public void createVertexShader(String shaderCode) throws Exception{

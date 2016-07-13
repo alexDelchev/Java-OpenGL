@@ -8,6 +8,8 @@ public interface IHud {
 	
 	List<GameItem> getTempItems();
 	
+	List<GameItem> getGUITextures();
+	
 	boolean isMenuOpen();
 	
 	default void cleanup(){

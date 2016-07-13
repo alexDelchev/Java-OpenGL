@@ -61,4 +61,14 @@ public class Camera {
 		rotation.y += offsetY;
 		rotation.y += offsetZ;
 	}
+	
+	public double getPitch(){
+		Vector3f dir = new Vector3f(rotation).normalize();
+		return Math.pow(Math.sin(-dir.y), -1);
+	}
+	
+	public double getYaw(){
+		Vector3f dir = new Vector3f(rotation).normalize();
+		return Math.pow(Math.tan(dir.x/dir.z), -1);
+	}
 }

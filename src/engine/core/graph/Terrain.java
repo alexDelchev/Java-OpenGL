@@ -50,6 +50,7 @@ public class Terrain {
 				GameItem terrainChunk = new GameItem(heightMap.getMesh());
 				terrainChunk.setScale(scale);
 				terrainChunk.setPosition(xDisplacement, 0, zDisplacement);
+				terrainChunk.setMaterial(heightMap.getMesh().getMaterial());
 				gameItems[row*blocksPerRow + col] = terrainChunk;
 				
 				boundingBoxes[row][col] = getBoundingBox(terrainChunk);
@@ -168,5 +169,13 @@ public class Terrain {
 	
 	public GameItem[] getGameItems(){
 		return gameItems;
+	}
+	
+	public float getWidth(){
+		return heightMap.getWidth()*scale;
+	}
+	
+	public float getHeight(){
+		return heightMap.getHeight()*scale;
 	}
 }

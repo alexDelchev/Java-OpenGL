@@ -6,6 +6,7 @@ const int MAX_SPOT_LIGHTS = 5;
 in vec2 outTexCoord;
 in vec3 mvVertexNormal;
 in vec3 mvVertexPos;
+in vec4 FragPosLightSpace;
 
 out vec4 fragColor;
 
@@ -45,6 +46,13 @@ struct SpotLight
     float cutOff;
 };
 
+struct Fog
+{
+    int active;
+    vec3 color;
+    float density;
+};
+
 uniform sampler2D texture_sampler;
 uniform vec3 ambientLight;
 uniform float specularPower;
@@ -53,6 +61,8 @@ uniform PointLight pointLights[MAX_POINT_LIGHTS];
 uniform SunLight sunLight;
 uniform SpotLight spotLights[MAX_SPOT_LIGHTS];
 uniform vec3 camera_pos;
+uniform Fog fog;
+uniform sampler2D shadowMap;
 
 vec4 calculateLightColor(vec3 light_color, float light_intensity, vec3 position, vec3 to_light_dir, vec3 normal){
 
@@ -110,6 +120,47 @@ vec4 calculateSpotLight(SpotLight light, vec3 position, vec3 normal){
     return color;
 }
 
+vec4 calcFog(vec3 pos, vec4 color, Fog fog, vec3 ambientLight, SunLight sunLight){
+    
+    vec3 fogColor = fog.color * (ambientLight + sunLight.color*sunLight.intensity);
+    float distance = length(pos);
+    float fogFactor = 1.0/exp((distance*fog.density)*(distance*fog.density));
+    fogFactor = clamp(fogFactor, 0.0, 1.0);
+    
+    vec3 resultColor = mix(fogColor, color.xyz, fogFactor);
+    return vec4(resultColor.xyz, 1);
+}
+
+float shadowCalculation(vec4 fragPosLightSpace, vec3 lightDir, vec3 normal, float intensity){
+    
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    
+    projCoords = projCoords * 0.5 + 0.5;
+    
+    float closestDepth = texture(shadowMap, projCoords.xy).r;
+    float currentDepth = projCoords.z;
+    
+    float bias = max(0.0055 * (1.0 - dot(normal, lightDir)), 0.0005);
+    //bias = 0.000;
+    
+   float shadow = 0.0;
+   vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
+   for(int x = -1; x <= 1; ++x){
+       for(int y = -1; y <= 1; ++y){
+           float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texelSize).r; 
+           shadow += currentDepth - bias > pcfDepth? 1.0 : 0.0;
+       }
+   }
+   
+   shadow /= 9.0;
+    
+    if(projCoords.z > 1.0){
+        shadow = 0.0;
+    }
+    
+    return shadow*intensity;
+}
+
 void main(){
 
     vec4 baseColor;
@@ -135,6 +186,10 @@ void main(){
         }
     }
     
-    fragColor = baseColor * totalLight;
-
+    float shadow = 1 - shadowCalculation(FragPosLightSpace, normalize(sunLight.direction), mvVertexNormal, sunLight.intensity);
+    fragColor = baseColor * (vec4(ambientLight, 1.0f) + totalLight * shadow);
+    
+    if(fog.active == 1){
+        fragColor = calcFog(mvVertexPos, fragColor, fog, ambientLight, sunLight);
+    }
 }
