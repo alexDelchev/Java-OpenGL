@@ -5,8 +5,14 @@ import de.matthiasmann.twl.utils.PNGDecoder.Format;
 
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
+
+import org.lwjgl.opengl.GL12;
+import org.lwjgl.opengl.GL13;
 
 import static org.lwjgl.opengl.GL11.*;
+import static org.lwjgl.opengl.GL12.*;
 import static org.lwjgl.opengl.GL30.glGenerateMipmap;
 
 public class Texture {
@@ -45,6 +51,33 @@ public class Texture {
 		this.ID = textureID;
 		this.width = decoder.getWidth();
 		this.height = decoder.getHeight();
+	}
+	
+	public Texture(int width, int height, int pixelFormat) throws Exception{
+		
+		this.ID = glGenTextures();
+		this.width = width;
+		this.height = height;
+		
+		glBindTexture(GL_TEXTURE_2D, this.ID);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, this.width, this.height, 0, pixelFormat, GL_FLOAT, (ByteBuffer) null);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL13.GL_CLAMP_TO_BORDER);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL13.GL_CLAMP_TO_BORDER);
+		float[] borderColor = {1.0f, 1.0f, 1.0f, 1.0f};
+		ByteBuffer bb = ByteBuffer.allocateDirect(borderColor.length * Float.BYTES);
+		bb.order(ByteOrder.nativeOrder());
+		FloatBuffer fb = bb.asFloatBuffer();
+		fb.put(borderColor);
+		fb.position(0);
+		glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, fb);
+	}
+	
+	public Texture(int id){
+		this.ID = id;
+		this.width = 0;
+		this.height = 0;
 	}
 	
 	public void bind(){
