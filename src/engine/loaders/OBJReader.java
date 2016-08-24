@@ -205,14 +205,12 @@ public class OBJReader {
 		List<Float> positions = new ArrayList<Float>();
 		List<Float> textures = new ArrayList<Float>();
 		List<Float> normals = new ArrayList<Float>();
-		Set<Index> set = new LinkedHashSet<Index>();
 		List<Integer> indices = new ArrayList<Integer>();
 		List<Index> indList = new ArrayList<Index>();
 		
 		int duplicates = 0;
 		for(int i=0; i<ind.size(); i++){
 			boolean duplicate = false;
-			int duplicateIndex = 0;
 			for(int j=0; j<indList.size(); j++){
 				if(ind.get(i).equalsTo(indList.get(j))){
 					duplicate = true;

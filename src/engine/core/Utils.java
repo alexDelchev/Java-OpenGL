@@ -66,5 +66,17 @@ public class Utils {
 		}
 		return array;
 	}
+	
+	public static boolean existsResourceFile(String fileName){
+		boolean result;
+		
+		try(InputStream is = Utils.class.getResourceAsStream(fileName)){
+			result = is != null;
+		}catch (Exception error){
+			result = false;
+		}
+		
+		return result;
+	}
 
 }

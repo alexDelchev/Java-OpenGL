@@ -108,5 +108,6 @@ public class GameEngine implements Runnable {
 	
 	protected void cleanup(){
 		gameLogic.cleanup();
+		System.exit(0);
 	}
 }

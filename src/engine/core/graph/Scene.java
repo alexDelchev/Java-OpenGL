@@ -15,6 +15,8 @@ public class Scene {
 
 	private List<GameItem> gameItems;
 	
+	private List<GameItem> trees;
+	
 	private SkyBox skyBox;
 	
 	private List<GameItem> terrain;
@@ -27,6 +29,7 @@ public class Scene {
 		meshMap = new HashMap();
 		sceneLight = new SceneLight();
 		gameItems = new ArrayList<GameItem>();
+		trees = new ArrayList<GameItem>();
 		terrain = new ArrayList<GameItem>();
 		itemMap = new HashMap<>();
 		fog = Fog.NO_FOG;
@@ -41,13 +44,15 @@ public class Scene {
 		
 		for(int i=0; i<gameItemsCount; i++){
 			GameItem gameItem = gameItems.get(i);
-			Mesh mesh = gameItem.getMesh();
-			List<GameItem> list = meshMap.get(mesh);
-			if(list == null){
-				list = new ArrayList<>();
-				meshMap.put(mesh, list);
+			Mesh[] meshes = gameItem.getMeshes();
+			for(Mesh mesh: meshes){
+				List<GameItem> list = meshMap.get(mesh);
+				if(list == null){
+					list = new ArrayList<>();
+					meshMap.put(mesh, list);
+				}
+				list.add(gameItem);
 			}
-			list.add(gameItem);
 			itemMap.put(gameItems.get(i).getID(), gameItems.get(i));
 		}
 		this.gameItems = gameItems;
@@ -55,13 +60,15 @@ public class Scene {
 	
 	public void addGameItem(GameItem item){
 		
-		Mesh mesh = item.getMesh();
-		List<GameItem> list = meshMap.get(mesh);
-		if(list == null){
-			list = new ArrayList<>();
-			meshMap.put(mesh, list);
+		Mesh[] meshes = item.getMeshes();
+		for(Mesh mesh: meshes){
+			List<GameItem> list = meshMap.get(mesh);
+			if(list == null){
+				list = new ArrayList<>();
+				meshMap.put(mesh, list);
+			}
+			list.add(item);
 		}
-		list.add(item);
 		itemMap.put(item.getID(), item);
 		
 		gameItems.add(item);

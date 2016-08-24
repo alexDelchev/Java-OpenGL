@@ -24,4 +24,12 @@ public class Timer {
 	public double getLastLoopTime(){
 		return lastLoopTime;
 	}
+	
+	public float getTimeSinceStart(){
+		
+		double time = getTime();
+		float elapsedTime = (float) (time - lastLoopTime);
+		
+		return elapsedTime;
+	}
 }

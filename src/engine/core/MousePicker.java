@@ -1,18 +1,30 @@
 package engine.core;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.joml.Matrix4f;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL30;
 
 import engine.core.graph.Camera;
 import engine.core.graph.Mesh;
 import engine.core.graph.Scene;
 import engine.core.graph.Terrain;
+import engine.core.graph.Texture;
+import engine.core.graph.animation.AnimatedGameItem;
+
+import static org.lwjgl.opengl.GL11.*;
+import static org.lwjgl.opengl.GL30.*;
 
 public class MousePicker {
+	
+	public final static int LEFT_MOUSE_BUTTON = -1;
+	
+	public final static int RIGHT_MOUSE_BUTTON = -2;
 	
 	private Vector3f currentRay;
 	
@@ -42,6 +54,8 @@ public class MousePicker {
 	private double currentX;
 	private double currentY;
 	
+	private int boundingBoxLOD = 5;
+	
 	
 	//Ray tracing: get screen coordinates of mouse
 	//screen coordinates -> NDC coordinates -> clip coords -> eye coords -> world coords
@@ -56,11 +70,20 @@ public class MousePicker {
 		selectedItem = -1;
 		
 		cursorOnTerrain = new Vector3f();
+		
 	}
 	
 	public void updateSize(Display display){
 		this.width = display.getWidth();
 		this.height = display.getHeight();
+	}
+	
+	public void setBoundingBoxLOD(int bblod){
+		this.boundingBoxLOD = bblod;
+	}
+	
+	public int getBoundingBoxLOD(){
+		return boundingBoxLOD;
 	}
 	
 	public void setGameItems(GameItem[] gameItems){
@@ -75,7 +98,7 @@ public class MousePicker {
 		return currentRay;
 	}
 	
-	public void handleEvent(double x, double y, List<GameItem> items){
+	public void handleEvent(double x, double y, List<GameItem> items, int key){
 		projectionMatrix = transformation.getProjectionMatrix();
 		viewMatrix = transformation.getViewMatrix();
 		
@@ -88,37 +111,128 @@ public class MousePicker {
 			
 			Matrix4f m = transformation.buildModelWorldMatrix(item);
 			
-			List<Vector3f> box = item.getBoundingBox();
+			List<List<Vector3f>> boxes = item.getBoundingBox();
 			
 			Vector3f min = new Vector3f(Float.POSITIVE_INFINITY,Float.POSITIVE_INFINITY,Float.POSITIVE_INFINITY);
 			Vector3f max = new Vector3f(Float.NEGATIVE_INFINITY,Float.NEGATIVE_INFINITY,Float.NEGATIVE_INFINITY);
 			
-			for(Vector3f currentVertex: box){
-				Vector3f vertex = new Vector3f(currentVertex.x, currentVertex.y, currentVertex.z);
-				vertex = m.transformPosition(vertex);
-				
-				min.x = Math.min(min.x, vertex.x);
-				min.y = Math.min(min.y, vertex.y);
-				min.z = Math.min(min.z, vertex.z);
-				
-				max.x = Math.max(max.x, vertex.x);
-				max.y = Math.max(max.y, vertex.y);
-				max.z = Math.max(max.z, vertex.z);
-			}		
-			
-			if(traceBoundingBox(currentRay, origin, min, max)){
-				if(selectedItem != i){
-				    System.out.println("Detected. Object scale: " + item.getScale());
-				    itemhit = true;
-				    itemSelected = true;
-				    selectedItem = i;
+			for(List<Vector3f> box: boxes){
+				for(Vector3f currentVertex: box){
+					Vector3f vertex = new Vector3f(currentVertex.x, currentVertex.y, currentVertex.z);
+					vertex = m.transformPosition(vertex);
+					
+					min.x = Math.min(min.x, vertex.x);
+					min.y = Math.min(min.y, vertex.y);
+					min.z = Math.min(min.z, vertex.z);
+					
+					max.x = Math.max(max.x, vertex.x);
+					max.y = Math.max(max.y, vertex.y);
+					max.z = Math.max(max.z, vertex.z);
 				}
-				break;
 			}
 			
+			/*System.out.println();
+			System.out.println(item.getID());
+			System.out.println(min.x);
+			System.out.println(min.y);
+			System.out.println(min.z);
+			System.out.println();
+			System.out.println(max.x);
+			System.out.println(max.y);
+			System.out.println(max.z);*/
+			
+			if(traceBoundingBox(currentRay, origin, min, max)){
+				    /*System.out.println("Detected. Object scale: " + item.getScale());
+				    itemhit = true;
+				    itemSelected = true;
+				    selectedItem = i;*/
+					
+					float[] positions = item.getMesh().getPositions();
+					int[] indices = item.getMesh().getIndices();
+					
+					List<Vector3f> vertices = new ArrayList<Vector3f>();
+					for(int count=0; count<boundingBoxLOD; count++){
+						vertices = new ArrayList<Vector3f>();
+						for(int index = (indices.length/boundingBoxLOD)*count; index<(indices.length/boundingBoxLOD) + ((indices.length/boundingBoxLOD)*count); index++){
+							Vector3f vertex = new Vector3f();
+							vertex.x = positions[indices[index]];
+							vertex.y = positions[indices[index] + 1];
+							vertex.z = positions[indices[index] + 2];
+							
+							vertices.add(vertex);
+						}
+						
+						min = new Vector3f(Float.POSITIVE_INFINITY,Float.POSITIVE_INFINITY,Float.POSITIVE_INFINITY);
+						max = new Vector3f(Float.NEGATIVE_INFINITY,Float.NEGATIVE_INFINITY,Float.NEGATIVE_INFINITY);
+						
+						
+						for(Vector3f currentVertex: vertices){
+							Vector3f vertex = new Vector3f(currentVertex.x, currentVertex.y, currentVertex.z);
+							vertex = m.transformPosition(vertex);
+								
+							min.x = Math.min(min.x, vertex.x);
+							min.y = Math.min(min.y, vertex.y);
+							min.z = Math.min(min.z, vertex.z);
+								
+							max.x = Math.max(max.x, vertex.x);
+							max.y = Math.max(max.y, vertex.y);
+							max.z = Math.max(max.z, vertex.z);
+						}
+						
+						if(traceBoundingBox(currentRay, origin, min, max)){
+							if(selectedItem != i && key == LEFT_MOUSE_BUTTON){
+								System.out.println("Detected. Object scale: " + item.getScale());
+							    itemhit = true;
+							    itemSelected = true;
+							    selectedItem = i;
+							    
+							    break;
+							}else if(selectedItem != i && key == RIGHT_MOUSE_BUTTON){
+								
+								if(items.get(selectedItem) instanceof AnimatedGameItem){
+									AnimatedGameItem animItem = (AnimatedGameItem) items.get(selectedItem);
+									
+									if(animItem.getAnimation("attack") != null){
+
+										Vector3f position = new Vector3f(animItem.getPosition());
+										Vector3f target = new Vector3f(item.getPosition());
+										
+										float zOrientation = animItem.getZOrientation();
+										Vector3f rotation = new Vector3f(animItem.getRotation());
+										
+									    Vector3f tempDir = new Vector3f();
+										tempDir.x = target.x - position.x;
+										tempDir.y = target.y - position.y;
+										tempDir.z = target.z - position.z;
+										    
+										if(animItem.isYUp()){
+										    float angle =(float) Math.atan2(tempDir.z, tempDir.x);
+											     
+									        rotation.z = -90 + (float) ((double) angle*(180/Math.PI)) + zOrientation;
+										}else{
+										    float angle =(float) Math.atan2(tempDir.z, tempDir.x);
+											    
+									        rotation.y = -90 + (float) ((double) angle*(180/Math.PI)) + zOrientation;
+										}
+										
+										animItem.setRotation(rotation);
+										
+										itemhit = true;
+										
+										animItem.setMoving(false);
+										    
+										animItem.playAnimation("attack");
+									}
+								}
+								
+								break;
+							}
+						}
+					}
+			}
 		}
 		
-		if(!itemhit && itemSelected){
+		if(!itemhit && itemSelected && key == LEFT_MOUSE_BUTTON){
 			if(sectionInRange(0, RAY_RANGE, currentRay)){
 				Vector3f position = binarySearch(0,0, RAY_RANGE, currentRay);
 				
@@ -272,5 +386,9 @@ public class MousePicker {
 		}else{
 			return false;
 		}
+	}
+	
+	public void cleanup(){
+		
 	}
 }

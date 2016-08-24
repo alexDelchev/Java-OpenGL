@@ -26,10 +26,15 @@ import engine.core.graph.SpotLight;
 import engine.core.graph.SunLight;
 import engine.core.graph.Terrain;
 import engine.core.graph.Texture;
+import engine.core.graph.animation.AnimatedGameItem;
 import engine.core.graph.Scene;
 import engine.core.graph.hud.StandardHud;
 import engine.loaders.OBJLoader;
 import engine.loaders.OBJReader;
+import engine.loaders.collada.ColladaReader;
+import engine.loaders.md5.MD5AnimModel;
+import engine.loaders.md5.MD5Loader;
+import engine.loaders.md5.MD5Model;
 import engine.core.GameItem;
 
 
@@ -130,6 +135,7 @@ public class SimpleGame implements IGameLogic{
         
 		mousePicker.init(renderer.getTransformation(), camera, terrain);
 		mousePicker.updateSize(display);
+		mousePicker.setBoundingBoxLOD(10);
 		
 		SkyBox skyBox = new SkyBox("/models/skybox.obj", "/textures/skybox_texture.png");
 		skyBox.setScale(500.0f);
@@ -142,6 +148,9 @@ public class SimpleGame implements IGameLogic{
 		textureMap.put("house", new Texture("/textures/casa.png"));
 		textureMap.put("house2", new Texture("/textures/house2_texture.png"));
 		textureMap.put("chair", new Texture("/textures/chair_texture.png"));
+		textureMap.put("tree", new Texture("/textures/tree_texture.png"));
+		textureMap.put("tree_fall", new Texture("/textures/tree_texture1.png"));
+		textureMap.put("tree_fall_alpha", new Texture("/textures/tree_texture2.png"));
 		
 		modelMap.put("tower", OBJReader.loadModel("/models/towerII.obj"));
 		modelMap.put("house", OBJReader.loadModel("/models/casa.obj"));
@@ -149,15 +158,160 @@ public class SimpleGame implements IGameLogic{
 		modelMap.put("sunwell", OBJReader.loadModel("/models/lightwell.obj"));
 		modelMap.put("house2", OBJReader.loadModel("/models/house2.obj"));
 		modelMap.put("chair", OBJReader.loadModel("/models/chair.obj"));
+		modelMap.put("tree", OBJReader.loadModel("/models/tree_00.obj"));
+		
+		//MD5 test
+		
+		MD5Model md5MeshModel = MD5Model.parse("/models/animated/gob.md5mesh");
+		MD5AnimModel md5AnimModel = MD5AnimModel.parse("/models/animated/gob.md5anim");
+		GameItem gob = MD5Loader.process(md5MeshModel, md5AnimModel, new Vector3f(1f,1f,1f));
+		gob.setScale(0.01f);
+		Vector3f position = new Vector3f(0, terrain.getLowestLevel()[1], 0);
+		gob.setPosition(position.x, position.y, position.z - 4);
+		gob.setRotation(90, 0, 90);
+		gob.setZOrientation(90);
+		gob.setCullFace(false);
+		gob.setMoveable(true);
+		
+		scene.addGameItem(gob);
+		
+		md5MeshModel = MD5Model.parse("/models/animated/bob_lamp_update_export.md5mesh");
+		md5AnimModel = MD5AnimModel.parse("/models/animated/bob_lamp_update_export.md5anim");
+		GameItem bob = MD5Loader.process(md5MeshModel, md5AnimModel, new Vector3f(1f,1f,1f));
+		bob.setScale(0.25f);
+		bob.setPosition(position.x - 3, position.y, position.z - 4);
+		bob.setRotation(90,0,0);
+		bob.setCullFace(false);
+		bob.setMoveable(true);
+		
+		scene.addGameItem(bob);
+		
+		AnimatedGameItem astroBoy = ColladaReader.loadModel("/models/animated/astro_boy.dae");
+		astroBoy.setMaterial(new Material(new Texture("/textures/astro_boy.png"), 1f));
+		for(Mesh mesh: astroBoy.getMeshes()){
+			mesh.setMaterial(astroBoy.getMaterial());
+		}
+		astroBoy.setScale(0.25f);
+		astroBoy.setPosition(position.x + 3, position.y, position.z);
+		astroBoy.setMoveable(true);
+		astroBoy.setRotation(90, 0, 0);
+		astroBoy.setAnimation("walk", ColladaReader.loadAnimation("/models/animated/astro_boy.dae"));
+		astroBoy.playAnimation("walk");
+		
+		astroBoy.getAnimation("walk").remove(astroBoy.getFrames().size() - 1);
+		astroBoy.getAnimation("walk").remove(astroBoy.getFrames().size() - 1);
+		astroBoy.getAnimation("walk").remove(astroBoy.getFrames().size() - 1);
+		
+		scene.addGameItem(astroBoy);
+		
+		AnimatedGameItem mage = ColladaReader.loadModel("/models/animated/mage_walk.dae");
+		mage.setMaterial(new Material(new Texture("/textures/Mage.png"), 1f));
+		for(Mesh mesh: mage.getMeshes()){
+			mesh.setMaterial(mage.getMaterial());
+		}
+		mage.setScale(0.03f);
+		mage.setYOffset(0.2f);
+		mage.setYUp(false);
+		mage.setPosition(position.x, position.y, position.z);
+		mage.setMoveable(true);
+		mage.setRotation(0,0,0);
+		
+		mage.setAnimation("walk", ColladaReader.loadAnimation("/models/animated/mage_walk.dae"));
+		mage.setAnimation("idle", ColladaReader.loadAnimation("/models/animated/mage_idle.dae"));
+		mage.setAnimation("hit", ColladaReader.loadAnimation("/models/animated/mage_hit.dae"));
+		mage.setAnimation("death", ColladaReader.loadAnimation("/models/animated/mage_death.dae"));
+		mage.setAnimation("attack", ColladaReader.loadAnimation("/models/animated/mage_attack.dae"));
+		
+		mage.playAnimation("idle");
+		
+		scene.addGameItem(mage);
+		
+		AnimatedGameItem archer = ColladaReader.loadModel("/models/animated/archer_walk.dae");
+		archer.setMaterial(new Material(new Texture("/textures/Archer.png"), 1f));
+		for(Mesh mesh: archer.getMeshes()){
+			mesh.setMaterial(archer.getMaterial());
+		}
+		archer.setScale(0.06f);
+		archer.setYUp(false);
+		archer.setPosition(position.x - 3, position.y, position.z);
+		archer.setMoveable(true);
+		archer.setRotation(0,0,0);
+		
+		archer.setAnimation("walk", ColladaReader.loadAnimation("/models/animated/archer_walk.dae"));
+		archer.setAnimation("idle", ColladaReader.loadAnimation("/models/animated/archer_idle.dae"));
+		archer.setAnimation("hit", ColladaReader.loadAnimation("/models/animated/archer_hit.dae"));
+		archer.setAnimation("death", ColladaReader.loadAnimation("/models/animated/archer_death.dae"));
+		archer.setAnimation("attack", ColladaReader.loadAnimation("/models/animated/archer_attack.dae"));
+		
+		archer.playAnimation("idle");
+		
+		scene.addGameItem(archer);
+		
+		AnimatedGameItem barbarian = ColladaReader.loadModel("/models/animated/barbarian_walk.dae");
+		barbarian.setMaterial(new Material(new Texture("/textures/Barbarian.png"), 1f));
+		for(Mesh mesh: barbarian.getMeshes()){
+			mesh.setMaterial(barbarian.getMaterial());
+		}
+		barbarian.setScale(0.06f);
+		barbarian.setYUp(false);
+		barbarian.setPosition(position.x, position.y, position.z + 2);
+		barbarian.setMoveable(true);
+		barbarian.setRotation(0,0,0);
+		
+		barbarian.setAnimation("walk", ColladaReader.loadAnimation("/models/animated/barbarian_walk.dae"));
+		barbarian.setAnimation("idle", ColladaReader.loadAnimation("/models/animated/barbarian_idle.dae"));
+		barbarian.setAnimation("hit", ColladaReader.loadAnimation("/models/animated/barbarian_hit.dae"));
+		barbarian.setAnimation("death", ColladaReader.loadAnimation("/models/animated/barbarian_death.dae"));
+		barbarian.setAnimation("attack", ColladaReader.loadAnimation("/models/animated/barbarian_attack.dae"));
+		
+		barbarian.playAnimation("idle");
+		
+		scene.addGameItem(barbarian);
+		
+		Mesh bbmesh = modelMap.get("lamp");
+		List<Vector3f> treeBB = bbmesh.calculateBoundingBox(bbmesh.getPositions());
+		Mesh mesh = modelMap.get("tree");
+		mesh.setMaterial(new Material());
+		
+		GameItem item = new GameItem(mesh);
+		item.setMaterial(new Material(textureMap.get("tree_fall_alpha"), 1f));
+		item.setPosition(position.x, position.y, position.z - 3);
+		item.setScale(0.01f);
+		item.setRotation(0, -20, 0);
+		item.setZOrientation(45);
+		item.setBoundingBox(treeBB);
+		
+		scene.addGameItem(item);
+		
+	    mesh = modelMap.get("tree");
+		mesh.setMaterial(new Material());
+		
+		item = new GameItem(mesh);
+		item.setMaterial(new Material(textureMap.get("tree_fall_alpha"), 1f));
+		item.setPosition(position.x + 3, position.y, position.z - 3);
+		item.setScale(0.01f);
+		item.setRotation(0, -20, 0);
+		item.setZOrientation(90);
+		item.setBoundingBox(treeBB);
+		
+		scene.addGameItem(item);
+		
+		mesh = modelMap.get("tree");
+		mesh.setMaterial(new Material());
+		
+		item = new GameItem(mesh);
+		item.setMaterial(new Material(textureMap.get("tree_fall_alpha"), 1f));
+		item.setPosition(position.x - 3, position.y, position.z - 3);
+		item.setScale(0.01f);
+		item.setRotation(0, -20, 0);
+		item.setBoundingBox(treeBB);
+		
+		scene.addGameItem(item);
 		
 		setupLights();
 		
 		camera.getPosition().y = terrain.getLowestLevel()[1] + 5f;
-		camera.getPosition().z = 10f;
-		
-		Mesh mesh = modelMap.get("tower");
-		mesh.setMaterial(new Material());
-		
+		camera.getPosition().z = 5f;
 		/*GameItem item = new GameItem(mesh);
 		item.setMaterial(new Material(textureMap.get("tower"), 1f));
 		Vector3f position = new Vector3f(0, terrain.getLowestLevel()[1], 0);
@@ -270,7 +424,13 @@ public class SimpleGame implements IGameLogic{
 			camera.moveRotation(rotVec.x * MOUSE_SENSITIVITY, rotVec.y * MOUSE_SENSITIVITY, 0);
 		}
 		
+		if(mouseInput.isRightButtoReleased()){
+			mousePicker.handleEvent(mouseInput.getCursorPosition().x, mouseInput.getCursorPosition().y, scene.getGameItems(), MousePicker.RIGHT_MOUSE_BUTTON);
+		}
+		
 		if(mouseInput.isLeftButtonReleased()){
+			
+			//renderer.renderColorPickingMap(camera, scene, mousePicker.getPickermapFBO(), mousePicker.getPickerMapTexture(), (int) mouseInput.getCursorPosition().x, (int) mouseInput.getCursorPosition().y);
 			int event = hud.handleMousePress(mouseInput.getCursorPosition().x, mouseInput.getCursorPosition().y);
 
 			if(event == StandardHud.TOP_MAIN_ICON){
@@ -422,7 +582,7 @@ public class SimpleGame implements IGameLogic{
 					dragging = false;
 				}
 			}else{
-				mousePicker.handleEvent(mouseInput.getCursorPosition().x, mouseInput.getCursorPosition().y, scene.getGameItems());
+				mousePicker.handleEvent(mouseInput.getCursorPosition().x, mouseInput.getCursorPosition().y, scene.getGameItems(), MousePicker.LEFT_MOUSE_BUTTON);
 			}
 		}
 		
@@ -448,9 +608,15 @@ public class SimpleGame implements IGameLogic{
 		}
 		
 		if(mousePicker.getSelectedItem() != selectedItemIndex){
-			hud.setStatusText("Object ID: " + scene.getGameItems().get(mousePicker.getSelectedItem()).getID());
+			//hud.setStatusText("Object ID: " + scene.getGameItems().get(mousePicker.getSelectedItem()).getID());
 			
-			selectedItemIndex = mousePicker.getSelectedItem();
+			//selectedItemIndex = mousePicker.getSelectedItem();
+		}
+		
+		for(GameItem item: scene.getGameItems()){
+			if(item instanceof AnimatedGameItem){
+				//((AnimatedGameItem) item).nextFrame();
+			}
 		}
 	}
 	
@@ -549,5 +715,6 @@ public class SimpleGame implements IGameLogic{
 		}
 		
 		hud.cleanup();
+		mousePicker.cleanup();
 	}
 }

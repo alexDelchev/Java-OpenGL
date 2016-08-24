@@ -53,14 +53,14 @@ public class Texture {
 		this.height = decoder.getHeight();
 	}
 	
-	public Texture(int width, int height, int pixelFormat) throws Exception{
+	public Texture(int width, int height, int internalFormat, int pixelFormat) throws Exception{
 		
 		this.ID = glGenTextures();
 		this.width = width;
 		this.height = height;
 		
 		glBindTexture(GL_TEXTURE_2D, this.ID);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, this.width, this.height, 0, pixelFormat, GL_FLOAT, (ByteBuffer) null);
+		glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, this.width, this.height, 0, pixelFormat, GL_FLOAT, (ByteBuffer) null);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL13.GL_CLAMP_TO_BORDER);

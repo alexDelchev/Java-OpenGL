@@ -7,6 +7,9 @@ import static org.lwjgl.opengl.GL13.glActiveTexture;
 import static org.lwjgl.opengl.GL20.*;
 import static org.lwjgl.opengl.GL30.*;
 
+import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 import java.util.List;
 import java.util.Map;
 
@@ -23,6 +26,8 @@ import engine.core.graph.SkyBox;
 import engine.core.graph.SpotLight;
 import engine.core.graph.SunLight;
 import engine.core.graph.Texture;
+import engine.core.graph.animation.AnimatedFrame;
+import engine.core.graph.animation.AnimatedGameItem;
 import engine.core.Transformation;
 import engine.core.GameItem;
 import engine.core.IHud;
@@ -30,6 +35,8 @@ import engine.core.IHud;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
+import org.lwjgl.BufferUtils;
+import org.lwjgl.opengl.GL11;
 
 public class Renderer {
 	
@@ -49,7 +56,7 @@ public class Renderer {
 	private Transformation transformation;
 	
 	private ShaderProgram shaderProgram;
-	private ShaderProgram depthShaderProgram;
+	private ShaderProgram mousePickerShader;
 	private ShaderProgram hudShaderProgram;
 	private ShaderProgram skyBoxShaderProgram;
 	private ShaderProgram depthMapShader;
@@ -100,6 +107,8 @@ public class Renderer {
 		
 		depthMapShader.createUniform("lightSpaceMatrix");
 		depthMapShader.createUniform("model");
+		
+		depthMapShader.createUniform("jointsMatrix");
 	}
 	
 	private void setupSkyBoxShader() throws Exception{
@@ -143,6 +152,8 @@ public class Renderer {
 
 		shaderProgram.createUniform("lightSpaceMatrix");
 		shaderProgram.createUniform("shadowMap");
+		
+		shaderProgram.createUniform("jointsMatrix");
 	}
 	
 	public void setupHudShader() throws Exception{
@@ -234,6 +245,12 @@ public class Renderer {
 			mesh.renderList(mapMeshes.get(mesh), (GameItem item) -> {
 				Matrix4f model = transformation.buildModelWorldMatrix(item);
 				depthMapShader.setUniform("model", model);
+				
+				if(item instanceof AnimatedGameItem){
+					AnimatedGameItem animItem = (AnimatedGameItem) item;
+					AnimatedFrame frame = animItem.getCurrentFrame();
+					depthMapShader.setUniform("jointsMatrix", frame.getJointMatrices());
+				}
 			});
 		}
 		
@@ -281,16 +298,39 @@ public class Renderer {
 
 			mesh.renderList(meshMap.get(mesh), (GameItem gameItem) ->{
 				
-				Texture texture = gameItem.getMaterial().getTexture();
+				Texture texture;
+				if(gameItem.getMeshes().length == 1){
+					texture = gameItem.getMaterial().getTexture();
+				}else{
+					texture = mesh.getMaterial().getTexture();
+				}
 				
 				if(texture != null){
 					glActiveTexture(GL_TEXTURE0);
 					glBindTexture(GL_TEXTURE_2D, texture.getID());
 				}
 				
-				shaderProgram.setUniform("material", gameItem.getMaterial());
+				if(!gameItem.isCullFace()){
+					glDisable(GL_CULL_FACE);
+					glCullFace(0);
+				}else{
+					glEnable(GL_CULL_FACE);
+					glCullFace(GL_BACK);
+				}
+				
+				if(gameItem.getMaterial() != null){
+					shaderProgram.setUniform("material", gameItem.getMaterial());
+				}else{
+					shaderProgram.setUniform("material", mesh.getMaterial());
+				}
 				Matrix4f modelMatrix = transformation.buildModelWorldMatrix(gameItem);
 				shaderProgram.setUniform("modelMatrix", modelMatrix);
+				
+				if(gameItem instanceof AnimatedGameItem){
+					AnimatedGameItem animItem = (AnimatedGameItem) gameItem;
+					AnimatedFrame frame = animItem.getCurrentFrame();
+					shaderProgram.setUniform("jointsMatrix", frame.getJointMatrices());
+				}
 			});
 		}
 		
@@ -374,26 +414,26 @@ public class Renderer {
 		
 		Matrix4f ortho = transformation.getOrtho2DProjectionMatrix(0, display.getWidth(), display.getHeight(), 0);
 		for(GameItem gameItem: hud.getGameItems()){
-			Mesh mesh = gameItem.getMesh();
-			
-			Matrix4f projModelMatrix = transformation.buildOrthoProjectionModelMatrix(gameItem, ortho);
-			hudShaderProgram.setUniform("projModelMatrix", projModelMatrix);
-			hudShaderProgram.setUniform("colour", gameItem.getMesh().getMaterial().getColor());
-			hudShaderProgram.setUniform("hasTexture", gameItem.getMesh().getMaterial().isTextured() ? 1:0);
-		
-			mesh.render();
-		}
-		
-		if(hud.isMenuOpen()){
-			for(GameItem gameItem: hud.getTempItems()){
-				Mesh mesh = gameItem.getMesh();
-				
+			for(Mesh mesh: gameItem.getMeshes()){
 				Matrix4f projModelMatrix = transformation.buildOrthoProjectionModelMatrix(gameItem, ortho);
 				hudShaderProgram.setUniform("projModelMatrix", projModelMatrix);
 				hudShaderProgram.setUniform("colour", gameItem.getMesh().getMaterial().getColor());
 				hudShaderProgram.setUniform("hasTexture", gameItem.getMesh().getMaterial().isTextured() ? 1:0);
-				
+			
 				mesh.render();
+			}
+		}
+		
+		if(hud.isMenuOpen()){
+			for(GameItem gameItem: hud.getTempItems()){
+				for(Mesh mesh: gameItem.getMeshes()){
+					Matrix4f projModelMatrix = transformation.buildOrthoProjectionModelMatrix(gameItem, ortho);
+					hudShaderProgram.setUniform("projModelMatrix", projModelMatrix);
+					hudShaderProgram.setUniform("colour", gameItem.getMesh().getMaterial().getColor());
+					hudShaderProgram.setUniform("hasTexture", gameItem.getMesh().getMaterial().isTextured() ? 1:0);
+				
+					mesh.render();
+				}
 			}
 		}
 
