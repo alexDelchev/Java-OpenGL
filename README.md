@@ -6,6 +6,8 @@ https://www.youtube.com/watch?v=3odBZ4Xfi4E&t
 https://www.youtube.com/watch?v=OiyMbEp61AY&t
 https://www.youtube.com/watch?v=QZVZoizJHdM&t
 
+The program was written based on this book: https://github.com/lwjglgamedev/lwjglbook
+
 The engine supports .obj, .dae, and .md5 format 3D models. Features include:
 - Skeletal animation
 - Shadows
