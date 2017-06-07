@@ -14,6 +14,7 @@ The engine supports .obj, .dae, and .md5 format 3D models. Features include:
 - Sunlight
 - Other sources of light such as lamps
 - Terrain collision
+- Height map terrain generation
 - Basic interface which allows the user to place buildings on the terrain
 
 The Collada(.dae) importer can easily be altered to return raw data such as
